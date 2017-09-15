@@ -226,7 +226,6 @@ static int max98927_dai_set_fmt(struct snd_soc_dai *codec_dai, unsigned int fmt)
 		regmap_update_bits(max98927->regmap,
 			MAX98927_R0035_PDM_RX_CTRL,
 			MAX98927_PDM_RX_EN_MASK, 0);
-
 	} else {
 		/* pdm channel configuration */
 		regmap_update_bits(max98927->regmap,
@@ -240,7 +239,6 @@ static int max98927_dai_set_fmt(struct snd_soc_dai *codec_dai, unsigned int fmt)
 		regmap_update_bits(max98927->regmap,
 			MAX98927_R0018_PCM_RX_EN_A,
 			MAX98927_PCM_RX_CH0_EN | MAX98927_PCM_RX_CH1_EN, 0);
-
 	}
 	return 0;
 }
@@ -292,21 +290,20 @@ static int max98927_set_clock(struct max98927_priv *max98927,
 			i << MAX98927_PCM_MASTER_MODE_MCLK_RATE_SHIFT);
 	}
 
-	if ((max98927->iface == SND_SOC_DAIFMT_DSP_A) ||
-	    (max98927->iface == SND_SOC_DAIFMT_DSP_B))
-		return 0;
+	if (!max98927->tdm_mode) {
+		/* BCLK configuration */
+		value = max98927_get_bclk_sel(blr_clk_ratio);
+		if (!value) {
+			dev_err(codec->dev, "format unsupported %d\n",
+				params_format(params));
+			return -EINVAL;
+		}
 
-	/* BCLK configuration */
-	value = max98927_get_bclk_sel(blr_clk_ratio);
-	if (!value) {
-		dev_err(codec->dev, "BCLK %d not supported\n", blr_clk_ratio);
-		return -EINVAL;
+		regmap_update_bits(max98927->regmap,
+			MAX98927_R0022_PCM_CLK_SETUP,
+			MAX98927_PCM_CLK_SETUP_BSEL_MASK,
+			value);
 	}
-
-	regmap_update_bits(max98927->regmap,
-		MAX98927_R0022_PCM_CLK_SETUP,
-		MAX98927_PCM_CLK_SETUP_BSEL_MASK,
-		value);
 	return 0;
 }
 
@@ -415,6 +412,8 @@ static int max98927_dai_tdm_slot(struct snd_soc_dai *dai,
 	int bsel = 0;
 	unsigned int chan_sz = 0;
 
+	max98927->tdm_mode = true;
+
 	/* BCLK configuration */
 	bsel = max98927_get_bclk_sel(slots * slot_width);
 	if (bsel == 0) {
@@ -505,6 +504,9 @@ static int max98927_dac_event(struct snd_soc_dapm_widget *w,
 	struct max98927_priv *max98927 = snd_soc_codec_get_drvdata(codec);
 
 	switch (event) {
+	case SND_SOC_DAPM_PRE_PMU:
+		max98927->tdm_mode = 0;
+		break;
 	case SND_SOC_DAPM_POST_PMU:
 		regmap_update_bits(max98927->regmap,
 			MAX98927_R003A_AMP_EN,
@@ -695,7 +697,7 @@ static int max98927_probe(struct snd_soc_codec *codec)
 	struct max98927_priv *max98927 = snd_soc_codec_get_drvdata(codec);
 
 	max98927->codec = codec;
-	codec->control_data = max98927->regmap;
+    codec->control_data = max98927->regmap;
 
 	/* Software Reset */
 	regmap_write(max98927->regmap,
