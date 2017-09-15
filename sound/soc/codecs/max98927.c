@@ -226,7 +226,6 @@ static int max98927_dai_set_fmt(struct snd_soc_dai *codec_dai, unsigned int fmt)
 		regmap_update_bits(max98927->regmap,
 			MAX98927_R0035_PDM_RX_CTRL,
 			MAX98927_PDM_RX_EN_MASK, 0);
-
 	} else {
 		/* pdm channel configuration */
 		regmap_update_bits(max98927->regmap,
@@ -240,7 +239,6 @@ static int max98927_dai_set_fmt(struct snd_soc_dai *codec_dai, unsigned int fmt)
 		regmap_update_bits(max98927->regmap,
 			MAX98927_R0018_PCM_RX_EN_A,
 			MAX98927_PCM_RX_CH0_EN | MAX98927_PCM_RX_CH1_EN, 0);
-
 	}
 	return 0;
 }
