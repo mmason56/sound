@@ -219,7 +219,6 @@ static const struct snd_sof_debugfs_map apl_debugfs[] = {
 	{"hda", APL_HDA_BAR, 0, 0x4000},
 	{"pp", APL_PP_BAR,  0, 0x1000},
 	{"dsp", APL_DSP_BAR,  0, 0x10000},
-//	{"pci", APL_PCI_BAR, 0, 0x150},
 };
 
 static void apl_dump(struct snd_sof_dev *sdev, u32 flags)
@@ -399,6 +398,7 @@ static int apl_dsp_cleanup(struct snd_sof_dev *sdev,
 	int ret;
 
 	ret = apl_spib_config(sdev, stream, APL_SPIB_DISABLE, 0);
+
 	/* TODO: spin lock ?*/
 	stream->open = 0;
 	stream->running = 0;
@@ -587,11 +587,13 @@ static int apl_stream_setup_bdl(struct snd_sof_dev *sdev,
 			bdl[APL_BDL_ARRAY_IOC] = 0;
 		else
 			bdl[APL_BDL_ARRAY_IOC] = cpu_to_le32(0x01);
+
 		bdl += 4;
 		stream->frags++;
 		offset += entry_size;
-		dev_dbg(sdev->dev, "bdl, frags:%d, entry size:0x%x;\n",
-				stream->frags, entry_size);
+
+		dev_vdbg(sdev->dev, "bdl, frags:%d, entry size:0x%x;\n",
+			stream->frags, entry_size);
 	}
 
 	*bdlp = bdl;
@@ -1050,7 +1052,7 @@ static void apl_get_windows(struct snd_sof_dev *sdev)
 			snd_sof_debugfs_create_item(sdev,
 				sdev->bar[APL_DSP_BAR] + elem->offset +
 				SRAM_WINDOW_OFFSET(elem->id),
-				elem->size, "trace");
+				elem->size, "etrace");
 			break;
 		case SOF_IPC_REGION_DEBUG:
 			snd_sof_debugfs_create_item(sdev,
@@ -1131,6 +1133,7 @@ static irqreturn_t apl_irq_handler(int irq, void *context)
 
 	/* IPC message ? */
 	if (sdev->irq_status & APL_ADSPIS_IPC) {
+
 		/* disable IPC interrupt */
 		snd_sof_dsp_update_bits_unlocked(sdev, APL_DSP_BAR,
 			APL_DSP_REG_ADSPIC, APL_ADSPIC_IPC, 0);
@@ -1161,6 +1164,7 @@ static irqreturn_t apl_irq_thread(int irq, void *context)
 		hipci = snd_sof_dsp_read(sdev, APL_DSP_BAR, APL_DSP_REG_HIPCI);
 		msg = hipci & APL_DSP_REG_HIPCI_MSG_MASK;
 		msg_ext = hipcie & APL_DSP_REG_HIPCIE_MSG_MASK;
+
 		dev_dbg(sdev->dev, "ipc: firmware response, msg:0x%x, msg_ext:0x%x\n",
 			msg, msg_ext);
 
@@ -1168,8 +1172,9 @@ static irqreturn_t apl_irq_thread(int irq, void *context)
 		snd_sof_dsp_update_bits(sdev, APL_DSP_BAR,
 			APL_DSP_REG_HIPCCTL, APL_DSP_REG_HIPCCTL_DONE, 0);
 
-		/* handle immediate reply from DSP core */
-		snd_sof_ipc_reply(sdev, msg);
+		/* handle immediate reply from DSP core - ignore ROM messages */
+		if (msg != 0x1004000)
+			snd_sof_ipc_reply(sdev, msg);
 
 		/* clear DONE bit - tell DSP we have completed the operation */
 		snd_sof_dsp_update_bits_forced(sdev, APL_DSP_BAR, 
@@ -1207,9 +1212,11 @@ static irqreturn_t apl_irq_thread(int irq, void *context)
 	}
 
 	if (ret == IRQ_HANDLED) {
+
 		/* reenable IPC interrupt */
 		snd_sof_dsp_update_bits(sdev, APL_DSP_BAR, APL_DSP_REG_ADSPIC,
 			APL_ADSPIC_IPC, APL_ADSPIC_IPC);
+
 		/* continue to send any remaining messages... */
 		snd_sof_ipc_msgs_tx(sdev);
 	}
@@ -1241,6 +1248,7 @@ static irqreturn_t cnl_irq_thread(int irq, void *context)
 		hipci = snd_sof_dsp_read(sdev, APL_DSP_BAR, CNL_DSP_REG_HIPCIDR);
 		msg_ext = hipci & CNL_DSP_REG_HIPCIDR_MSG_MASK;
 		msg = hipcida & CNL_DSP_REG_HIPCIDA_MSG_MASK;
+
 		dev_dbg(sdev->dev, "ipc: firmware response, msg:0x%x, msg_ext:0x%x\n",
 			msg, msg_ext);
 
@@ -1294,9 +1302,11 @@ static irqreturn_t cnl_irq_thread(int irq, void *context)
 	}
 
 	if (ret == IRQ_HANDLED) {
+
 		/* reenable IPC interrupt */
 		snd_sof_dsp_update_bits(sdev, APL_DSP_BAR, APL_DSP_REG_ADSPIC,
 			APL_ADSPIC_IPC, APL_ADSPIC_IPC);
+
 		/* continue to send any remaining messages... */
 		snd_sof_ipc_msgs_tx(sdev);
 	}
@@ -2007,42 +2017,42 @@ static int apl_stream_init(struct snd_sof_dev *sdev)
 }
 
 static const struct snd_sof_chip_info chip_info[] = {
-	{
-		.id = 0x5a98,
-		.cores_num = 2,
-		.cores_mask = APL_DSP_CORE_MASK(0) |APL_DSP_CORE_MASK(1),
-		.ipc_req = APL_DSP_REG_HIPCI,
-		.ipc_req_mask = APL_DSP_REG_HIPCI_BUSY,
-		.ipc_ack = APL_DSP_REG_HIPCIE,
-		.ipc_ack_mask = APL_DSP_REG_HIPCIE_DONE,
-		.ipc_ctl = APL_DSP_REG_HIPCCTL,
-		.irq_thread = apl_irq_thread
-	},
-	{
-		.id = 0x1a98,
-		.cores_num = 2,
-		.cores_mask = APL_DSP_CORE_MASK(0) |APL_DSP_CORE_MASK(1),
-		.ipc_req = APL_DSP_REG_HIPCI,
-		.ipc_req_mask = APL_DSP_REG_HIPCI_BUSY,
-		.ipc_ack = APL_DSP_REG_HIPCIE,
-		.ipc_ack_mask = APL_DSP_REG_HIPCIE_DONE,
-		.ipc_ctl = APL_DSP_REG_HIPCCTL,
-		.irq_thread = apl_irq_thread
-	},
-	{
-		.id = 0x9dc8,
-		.cores_num = 4,
-		.cores_mask = APL_DSP_CORE_MASK(0) |
-					APL_DSP_CORE_MASK(1) |
-					APL_DSP_CORE_MASK(2) |
-					APL_DSP_CORE_MASK(3),
-		.ipc_req = CNL_DSP_REG_HIPCIDR,
-		.ipc_req_mask = CNL_DSP_REG_HIPCIDR_BUSY,
-		.ipc_ack = CNL_DSP_REG_HIPCIDA,
-		.ipc_ack_mask = CNL_DSP_REG_HIPCIDA_DONE,
-		.ipc_ctl = CNL_DSP_REG_HIPCCTL,
-		.irq_thread = cnl_irq_thread
-	},
+{
+	.id = 0x5a98,
+	.cores_num = 2,
+	.cores_mask = APL_DSP_CORE_MASK(0) | APL_DSP_CORE_MASK(1),
+	.ipc_req = APL_DSP_REG_HIPCI,
+	.ipc_req_mask = APL_DSP_REG_HIPCI_BUSY,
+	.ipc_ack = APL_DSP_REG_HIPCIE,
+	.ipc_ack_mask = APL_DSP_REG_HIPCIE_DONE,
+	.ipc_ctl = APL_DSP_REG_HIPCCTL,
+	.irq_thread = apl_irq_thread
+},
+{
+	.id = 0x1a98,
+	.cores_num = 2,
+	.cores_mask = APL_DSP_CORE_MASK(0) | APL_DSP_CORE_MASK(1),
+	.ipc_req = APL_DSP_REG_HIPCI,
+	.ipc_req_mask = APL_DSP_REG_HIPCI_BUSY,
+	.ipc_ack = APL_DSP_REG_HIPCIE,
+	.ipc_ack_mask = APL_DSP_REG_HIPCIE_DONE,
+	.ipc_ctl = APL_DSP_REG_HIPCCTL,
+	.irq_thread = apl_irq_thread
+},
+{
+	.id = 0x9dc8,
+	.cores_num = 4,
+	.cores_mask = APL_DSP_CORE_MASK(0) |
+				APL_DSP_CORE_MASK(1) |
+				APL_DSP_CORE_MASK(2) |
+				APL_DSP_CORE_MASK(3),
+	.ipc_req = CNL_DSP_REG_HIPCIDR,
+	.ipc_req_mask = CNL_DSP_REG_HIPCIDR_BUSY,
+	.ipc_ack = CNL_DSP_REG_HIPCIDA,
+	.ipc_ack_mask = CNL_DSP_REG_HIPCIDA_DONE,
+	.ipc_ctl = CNL_DSP_REG_HIPCCTL,
+	.irq_thread = cnl_irq_thread
+},
 };
 
 const struct snd_sof_chip_info *sof_get_chip_info(int pci_id)
@@ -2050,6 +2060,7 @@ const struct snd_sof_chip_info *sof_get_chip_info(int pci_id)
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(chip_info); i++) {
+
 		if (chip_info[i].id == pci_id)
 			return &chip_info[i];
 	}
@@ -2070,8 +2081,9 @@ static int apl_init(struct snd_sof_dev *sdev,
 	const struct snd_sof_chip_info *chip;
 
 	chip = sof_get_chip_info(sdev->pci->device);
-	if(chip == NULL) {
-		dev_err(sdev->dev, "no such device supported, chip id:%x\n", sdev->pci->device);
+	if (chip == NULL) {
+		dev_err(sdev->dev, "no such device supported, chip id:%x\n",
+			sdev->pci->device);
 		ret = -EIO;
 		goto err;
 	}
@@ -2246,6 +2258,7 @@ int apl_run_firmware(struct snd_sof_dev *sdev)
 irq_err:
 	apl_dump(sdev, SOF_DBG_REGS | SOF_DBG_PCI | SOF_DBG_MBOX);
 	free_irq(sdev->ipc_irq, sdev);
+
 	/* disable DSP */
 	snd_sof_dsp_update_bits(sdev, APL_PP_BAR, SOF_HDA_REG_PP_PPCTL,
 		SOF_HDA_PPCTL_GPROCEN, 0);
@@ -2273,7 +2286,7 @@ static int apl_probe(struct snd_sof_dev *sdev)
 	chip = sof_get_chip_info(sdev->pci->device);
 	if (chip == NULL) {
 		dev_err(sdev->dev, "no such device supported, chip id:%x\n",
-							sdev->pci->device);
+			sdev->pci->device);
 		ret = -EIO;
 		goto err;
 	}
