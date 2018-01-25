@@ -201,9 +201,9 @@ static int sof_probe(struct platform_device *pdev)
 
 	ret = snd_sof_init_trace(sdev);
 	if (ret < 0) {
-		dev_err(sdev->dev,
-			"error: failed to initialize trace %d\n", ret);
-		goto err;
+		dev_warn(sdev->dev,
+			 "error: failed to initialize FW debug tracing %d\n", ret);
+		ret = 0;
 	}
 
 	/* we return 0 on error if debug is defined as this allows DSP
