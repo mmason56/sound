@@ -7,6 +7,8 @@ snd-sof-intel-apl-objs := hw-apl.o
 snd-sof-intel-cnl-objs := hw-apl.o
 snd-sof-spi-objs := hw-spi.o
 
+export KBUILD_CFLAGS +=-DDEBUG
+
 snd-sof-pci-objs := sof-pci-dev.o
 snd-sof-acpi-objs := sof-acpi-dev.o
 snd-sof-platform-objs := sof-platform-dev.o

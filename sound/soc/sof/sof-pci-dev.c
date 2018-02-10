@@ -77,10 +77,10 @@ static const struct sof_dev_desc byt_desc = {
 static struct snd_soc_acpi_mach sof_cnl_machines[] = {
 	{
 		.id = "INT34C2",
-		.drv_name = "cnl_alc700_i2s",
+		.drv_name = "cnl_rt274",
 		.sof_fw_filename = "intel/reef-cnl.ri",
 		.sof_tplg_filename = "intel/reef-cnl.tplg",
-		.asoc_plat_name = "0000:00:0e.0",
+		.asoc_plat_name = "0000:00:1f.3",
 	},
 	{}
 };
@@ -283,3 +283,4 @@ static struct pci_driver snd_sof_pci_driver = {
 module_pci_driver(snd_sof_pci_driver);
 
 MODULE_LICENSE("Dual BSD/GPL");
+MODULE_ALIAS("platform:sof-pci");

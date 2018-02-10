@@ -1163,6 +1163,7 @@ static int soc_bind_dai_link(struct snd_soc_card *card,
 	/* find one from the set of registered platforms */
 	list_for_each_entry(component, &component_list, list) {
 		platform_of_node = component->dev->of_node;
+		dev_err(card->dev, "pname: %s, cname: %s", platform_name, component->name);
 		if (!platform_of_node && component->dev->parent->of_node)
 			platform_of_node = component->dev->parent->of_node;
 
@@ -1180,6 +1181,7 @@ static int soc_bind_dai_link(struct snd_soc_card *card,
 	/* find one from the set of registered platforms */
 	list_for_each_entry(platform, &platform_list, list) {
 		platform_of_node = platform->dev->of_node;
+		dev_err(card->dev, "pname: %s, cname: %s", platform_name, component->name);
 		if (!platform_of_node && platform->dev->parent->of_node)
 			platform_of_node = platform->dev->parent->of_node;
 

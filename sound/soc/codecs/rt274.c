@@ -687,7 +687,7 @@ static int rt274_hw_params(struct snd_pcm_substream *substream,
 
 	snd_soc_update_bits(codec,
 		RT274_I2S_CTRL1, 0xc018, d_len_code << 3 | c_len_code << 14);
-	dev_dbg(codec->dev, "format val = 0x%x\n", val);
+	dev_err(codec->dev, "format val = 0x%x\n", val);
 
 	snd_soc_update_bits(codec, RT274_DAC_FORMAT, 0x407f, val);
 	snd_soc_update_bits(codec, RT274_ADC_FORMAT, 0x407f, val);
@@ -699,17 +699,20 @@ static int rt274_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 {
 	struct snd_soc_codec *codec = dai->codec;
 	struct rt274_priv *rt274 = snd_soc_codec_get_drvdata(codec);
+	dev_err(codec->dev,"set dai fmt =:%x\n", fmt);
 
 	switch (fmt & SND_SOC_DAIFMT_MASTER_MASK) {
 	case SND_SOC_DAIFMT_CBM_CFM:
 		snd_soc_update_bits(codec,
 			RT274_I2S_CTRL1, RT274_I2S_MODE_MASK, RT274_I2S_MODE_M);
 		rt274->master = true;
+		dev_err(codec->dev,"set rt274 in master mode\n");
 		break;
 	case SND_SOC_DAIFMT_CBS_CFS:
 		snd_soc_update_bits(codec,
 			RT274_I2S_CTRL1, RT274_I2S_MODE_MASK, RT274_I2S_MODE_S);
 		rt274->master = false;
+		dev_err(codec->dev,"set rt274 in slave mode\n");
 		break;
 	default:
 		return -EINVAL;
@@ -735,6 +738,7 @@ static int rt274_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 	default:
 		return -EINVAL;
 	}
+
 	/* bit 15 Stream Type 0:PCM 1:Non-PCM */
 	snd_soc_update_bits(codec, RT274_DAC_FORMAT, 0x8000, 0);
 	snd_soc_update_bits(codec, RT274_ADC_FORMAT, 0x8000, 0);
@@ -747,6 +751,7 @@ static int rt274_set_dai_pll(struct snd_soc_dai *dai, int pll_id, int source,
 {
 	struct snd_soc_codec *codec = dai->codec;
 	struct rt274_priv *rt274 = snd_soc_codec_get_drvdata(codec);
+	dev_err(codec->dev, "%s freq in=%d, freq out=%d\n", __func__, freq_in,freq_out);
 
 	switch (source) {
 	case RT274_PLL2_S_MCLK:
@@ -800,7 +805,7 @@ static int rt274_set_dai_sysclk(struct snd_soc_dai *dai,
 	struct rt274_priv *rt274 = snd_soc_codec_get_drvdata(codec);
 	unsigned int clk_src, mclk_en;
 
-	dev_dbg(codec->dev, "%s freq=%d\n", __func__, freq);
+	dev_err(codec->dev, "%s freq=%d\n", __func__, freq);
 
 	switch (clk_id) {
 	case RT274_SCLK_S_MCLK:
@@ -869,7 +874,7 @@ static int rt274_set_bclk_ratio(struct snd_soc_dai *dai, unsigned int ratio)
 	struct snd_soc_codec *codec = dai->codec;
 	struct rt274_priv *rt274 = snd_soc_codec_get_drvdata(codec);
 
-	dev_dbg(codec->dev, "%s ratio=%d\n", __func__, ratio);
+	dev_err(codec->dev, "%s ratio=%d\n", __func__, ratio);
 	rt274->fs = ratio;
 	if ((ratio / 50) == 0)
 		snd_soc_update_bits(codec,
@@ -887,6 +892,7 @@ static int rt274_set_tdm_slot(struct snd_soc_dai *dai, unsigned int tx_mask,
 
 {
 	struct snd_soc_codec *codec = dai->codec;
+	dev_err(codec->dev, "%s slots=%d\n", __func__, slots);
 
 	if (rx_mask || tx_mask) {
 		snd_soc_update_bits(codec,
@@ -1181,6 +1187,7 @@ static int rt274_i2c_probe(struct i2c_client *i2c,
 	regmap_write(rt274->regmap, RT274_UNSOLICITED_HP_OUT, 0x81);
 	regmap_write(rt274->regmap, RT274_UNSOLICITED_MIC, 0x82);
 
+#if 0
 	if (rt274->i2c->irq) {
 		ret = request_threaded_irq(rt274->i2c->irq, NULL, rt274_irq,
 			IRQF_TRIGGER_HIGH | IRQF_ONESHOT, "rt274", rt274);
@@ -1190,6 +1197,7 @@ static int rt274_i2c_probe(struct i2c_client *i2c,
 			return ret;
 		}
 	}
+#endif
 
 	ret = snd_soc_register_codec(&i2c->dev, &soc_codec_dev_rt274,
 				     rt274_dai, ARRAY_SIZE(rt274_dai));

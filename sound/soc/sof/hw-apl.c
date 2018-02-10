@@ -16,7 +16,7 @@
  * Hardware interface for audio DSP on Apollolake and Cannonlake.
  */
 
-#define DEBUG
+//#define DEBUG
 
 #include <linux/delay.h>
 #include <linux/fs.h>
