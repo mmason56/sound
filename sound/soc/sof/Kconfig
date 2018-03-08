@@ -7,8 +7,6 @@ config SND_SOC_SOF_ACPI
 config SND_SOC_SOF_PLATFORM
 	tristate
 
-config SND_SOC_SOF_NOCODEC
-	tristate
 
 config SND_SOC_SOF
 	tristate "Sound Open Firmware Support"
@@ -16,10 +14,20 @@ config SND_SOC_SOF
 	depends on SND_DMA_SGBUF
 	select SND_SOC_TOPOLOGY
 	select SND_SOC_COMPRESS
-	select SND_SOC_SOF_NOCODEC
 	help
           This adds support for SOF
           Say Y if you have such a device.
+          If unsure select "N".
+
+config SND_SOC_SOF_NOCODEC
+	tristate "SOF nocodec fallback"
+	depends on SND_SOC_SOF
+	help
+          This adds support for a dummy/nocodec machine driver fallback
+	  option if no known codec is detected. This is typically only
+	  enabled for developers or devices where the sound card is
+	  controlled externally
+          Say Y if you need this fallback option
           If unsure select "N".
 
 config SND_SOC_SOF_INTEL
