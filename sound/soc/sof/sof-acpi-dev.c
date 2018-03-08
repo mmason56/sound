@@ -240,6 +240,7 @@ static int sof_acpi_probe(struct platform_device *pdev)
 	/* find machine */
 	mach = snd_soc_acpi_find_machine(desc->machines);
 	if (!mach) {
+#if IS_ENABLED(CONFIG_SND_SOC_SOF_NOCODEC)
 		struct snd_soc_acpi_mach *m;
 		/* don't bind to any particular codec, just initialse the DSP */
 		dev_err(dev, "No matching ASoC machine driver found - using nocodec\n");
@@ -253,6 +254,10 @@ static int sof_acpi_probe(struct platform_device *pdev)
 		m->sof_tplg_filename = desc->nocodec_tplg_filename;
 		m->asoc_plat_name = "sof-platform";/// used ???
 		mach = m;
+#else
+		dev_err(dev, "No matching ASoC machine driver found - aborting probe\n");
+		return -ENODEV;
+#endif
 	}
 
 	mach->pdata = ops;
