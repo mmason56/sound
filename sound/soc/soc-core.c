@@ -2191,6 +2191,14 @@ static void soc_check_tplg_fes(struct snd_soc_card *card)
 			dai_link->be_hw_params_fixup =
 				platform->driver->be_hw_params_fixup;
 		}
+
+		/* Inform userspace we are using alternate topology */
+		if (platform->driver->topology_name_prefix) {
+			snprintf(card->topology_shortname, 32, "%s-%s",
+				 platform->driver->topology_name_prefix,
+				 card->name);
+			card->name = card->topology_shortname;
+		}
 	}
 }
 
