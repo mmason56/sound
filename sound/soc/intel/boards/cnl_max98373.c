@@ -34,7 +34,6 @@
 #include <sound/jack.h>
 #include <linux/input.h>
 
-#include "../../codecs/hdac_hdmi.h"
 #include "../../codecs/max98373.h"
 
 #define CNL_FREQ_OUT		19200000
@@ -42,21 +41,10 @@
 #define MAXIM_DEV0_NAME		"i2c-MX98373:00"
 #define MAXIM_DEV1_NAME		"i2c-MX98373:01"
 #define CNL_NAME_SIZE		32
-#define CNL_MAX_HDMI		2
 
 struct cnl_max98373_private {
 	int pcm_count;
 };
-
-static int cnl_dmic_fixup(struct snd_soc_pcm_runtime *rtd,
-				struct snd_pcm_hw_params *params)
-{
-	struct snd_interval *channels = hw_param_interval(params,
-						SNDRV_PCM_HW_PARAM_CHANNELS);
-	channels->min = channels->max = 2;
-
-	return 0;
-}
 
 static const struct snd_kcontrol_new cnl_controls[] = {
 	SOC_DAPM_PIN_SWITCH("Left Spk"),
@@ -66,24 +54,15 @@ static const struct snd_kcontrol_new cnl_controls[] = {
 static const struct snd_soc_dapm_widget cnl_widgets[] = {
 	SND_SOC_DAPM_SPK("Left Spk", NULL),
 	SND_SOC_DAPM_SPK("Right Spk", NULL),
-	SND_SOC_DAPM_MIC("SoC DMIC", NULL),
 };
 
 static const struct snd_soc_dapm_route cnl_map[] = {
 	/* speaker */
 	{ "Left Spk", NULL, "Left BE_OUT" },
 	{ "Right Spk", NULL, "Right BE_OUT" },
-	{ "Left HiFi Playback", NULL, "ssp1 Tx" },
-	{ "Right HiFi Playback", NULL, "ssp1 Tx" },
 
-	{"ssp1 Tx", NULL, "codec0_out"},
-
-	{"ssp1 Rx", NULL, "HiFi Capture"},
-	{"codec0_in", NULL, "ssp1 Rx"},
-	/* dmic */
-	{"DMic", NULL, "SoC DMIC"},
-	{"DMIC01 Rx", NULL, "DMIC AIF"},
-	{"dmic01_hifi", NULL, "DMIC01 Rx"},
+	{ "Left HiFi Playback", NULL, "SSP1.OUT" },
+	{ "Right HiFi Playback", NULL, "SSP1.OUT" },
 };
 
 static int cnl_ssp1_hw_params(struct snd_pcm_substream *substream,
@@ -96,14 +75,14 @@ static int cnl_ssp1_hw_params(struct snd_pcm_substream *substream,
 		struct snd_soc_dai *codec_dai = runtime->codec_dais[j];
 
 		if (!strcmp(codec_dai->component->name, MAXIM_DEV0_NAME)) {
-			ret = snd_soc_dai_set_tdm_slot(codec_dai, 0x30, 3, 8, 16);
+			ret = snd_soc_dai_set_tdm_slot(codec_dai, 0x30, 1, 8, 24);
 			if (ret < 0) {
 				dev_err(runtime->dev, "DEV0 TDM slot err:%d\n", ret);
 			return ret;
 			}
 		}
 		if (!strcmp(codec_dai->component->name, MAXIM_DEV1_NAME)) {
-			ret = snd_soc_dai_set_tdm_slot(codec_dai, 0xC0, 3, 8, 16);
+			ret = snd_soc_dai_set_tdm_slot(codec_dai, 0xC0, 2, 8, 24);
 			if (ret < 0) {
 				dev_err(runtime->dev, "DEV1 TDM slot err:%d\n", ret);
 			return ret;
@@ -134,7 +113,6 @@ static int cnl_be_fixup(struct snd_soc_pcm_runtime *rtd,
 	return 0;
 }
 static struct snd_soc_codec_conf max98373_codec_conf[] = {
-
 	{
 		.dev_name = MAXIM_DEV0_NAME,
 		.name_prefix = "Right",
@@ -152,33 +130,20 @@ static struct snd_soc_dai_link_component ssp0_codec_components[] = {
 		.dai_name = MAX98373_CODEC_DAI,
 	},
 
-	{  /* For Right */
+	{  /* Right */
 		.name = MAXIM_DEV1_NAME,
 		.dai_name = MAX98373_CODEC_DAI,
 	},
-
 };
 
 struct snd_soc_dai_link cnl_dailink[] = {
 	{
-		.name = "dmic01",
-		.id = 2,
-		.cpu_dai_name = "DMIC01 Pin",
-		.codec_name = "dmic-codec",
-		.codec_dai_name = "dmic-hifi",
-		.platform_name = "0000:00:1f.3",
-		.ignore_suspend = 1,
-		.no_pcm = 1,
-		.dpcm_capture = 1,
-		.be_hw_params_fixup = cnl_dmic_fixup,
-	},
-	{
 		.name = "SSP1-Codec",
-		.id = 1,
-		.cpu_dai_name = "SSP1 Pin",
+		.id = 0,
+		.cpu_dai_name = "sof-audio",
 		.codecs = ssp0_codec_components,
 		.num_codecs = ARRAY_SIZE(ssp0_codec_components),
-		.platform_name = "0000:00:1f.3",
+		.platform_name = "sof-audio",
 		.be_hw_params_fixup = cnl_be_fixup,
 		.ignore_pmdown_time = 1,
 		.no_pcm = 1,
@@ -196,7 +161,7 @@ cnl_add_dai_link(struct snd_soc_card *card, struct snd_soc_dai_link *link)
 {
 	struct cnl_max98373_private *ctx = snd_soc_card_get_drvdata(card);
 
-	link->platform_name = "0000:00:1f.3";
+	link->platform_name = "sof-audio";
 	link->nonatomic = 1;
 
 	ctx->pcm_count++;
@@ -206,7 +171,7 @@ cnl_add_dai_link(struct snd_soc_card *card, struct snd_soc_dai_link *link)
 
 /* SoC card */
 static struct snd_soc_card snd_soc_card_cnl = {
-	.name = "cnlmax98373",
+	.name = "cnl-max98373",
 	.owner = THIS_MODULE,
 	.dai_link = cnl_dailink,
 	.num_links = ARRAY_SIZE(cnl_dailink),
