@@ -82,6 +82,13 @@ static struct snd_soc_acpi_mach sof_cnl_machines[] = {
 		.sof_tplg_filename = "intel/reef-cnl.tplg",
 		.asoc_plat_name = "0000:00:0e.0",
 	},
+	{
+		.id = "MX98373",
+		.drv_name = "cnl_max98373",
+		.sof_fw_filename = "intel/reef-cnl.ri",
+		.sof_tplg_filename = "intel/reef-cnl.tplg",
+		.asoc_plat_name = "0000:00:1f.3",
+	},
 	{}
 };
 
